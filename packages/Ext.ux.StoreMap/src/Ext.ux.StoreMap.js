@@ -106,6 +106,33 @@ Ext.define('Ext.ux.StoreMap', {
         minimumZoomLevel: 16,
 
         /**
+         * @cfg {Boolean} markerTapInfoWindow True if you wish markers to show Google Maps Info Window.
+         * contentString config can be used to define to the content of Info Window.
+         * If false the default 'markertap' event will fire.
+         */
+        markerTapInfoWindow: true,
+
+        /**
+         * @cfg {String/Function} contentString The content string to be displayed within the info window. If a string is set then it will be used as the content, if a Function is used it will have the record passed in.
+         *
+         * Functions must return a String.
+         *
+         * For example,
+         *
+         * contentString: function(record){
+         *      return record.get('contentString');
+         * }
+         */
+        contentString: 'Info Window Content',
+
+        /**
+         * @cfg {Boolean} closeInfoWindowMapTap False if you want Info Windows to stay open on a map click event.
+         * If false the default 'mapclick' event will fire.
+         * If True all Info Windows will close on a map click.
+         */
+        closeInfoWindowMapTap: false,
+
+        /**
          * @cfg {Object} linkConfig A configuration object to be passed to the linking Google Maps Polyline (see docs: https://developers.google.com/maps/documentation/javascript/reference#PolylineOptions)
          */
         linkConfig           : {
@@ -195,13 +222,23 @@ Ext.define('Ext.ux.StoreMap', {
 
     /**
      * Handler for the Google Map's click event.
-     * This raises the 'mapclick' event on the StoreMap itself.
+     * This raises the 'mapclick' event on the StoreMap by default.
+     * If closeInfoWindowMapTap is True all Info Windows will close on a map click
      * @method
      * @private
      * @param e
      */
     onMapClick: function (e) {
-        this.fireEvent('maptap', this, e);
+
+        if (this.closeInfoWindowMapTap) {
+            for (var i = 0; i < this.cache.infowindow.length; i++) {
+                this.cache.infowindow[i].close();
+            }
+        }
+
+        else {
+            this.fireEvent('maptap', this, e);
+        }
     },
 
     /**
@@ -464,7 +501,8 @@ Ext.define('Ext.ux.StoreMap', {
 
     /**
      * Handler for a click event on one of the map's markers.
-     * This raises the 'markertap' event on the StoreMap itself and passes along
+     * If markerTapInfoWindow is true (default) Google Maps Info Windows will be created on the related marker.
+     * If markerTapInfoWindow is false this raises the 'markertap' event on the StoreMap.
      * the POI record and marker objects. These items are bound to the function (using Ext.bind) when attached.
      * @method
      * @private
@@ -474,7 +512,20 @@ Ext.define('Ext.ux.StoreMap', {
      */
     onMarkerTap: function (e, record, marker) {
 
-        this.fireEvent('markertap', this, record, marker, e);
+        if (this.markerTapInfoWindow) {
+            var infowindow = new google.maps.InfoWindow({
+
+                content: this.getContentStringAsString(record)
+            });
+
+            this.cache.infowindow.push(infowindow);
+
+            infowindow.open(this.getMap(),marker);
+        }
+
+        else {
+            this.fireEvent('markertap', this, record, marker, e);
+        }
     },
 
     /**
